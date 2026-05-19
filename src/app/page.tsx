@@ -47,6 +47,7 @@ export default function Dashboard() {
   // Role extraction
   const userRole = (session?.user as any)?.role || 'MEMBER';
   const isAdmin = userRole === 'ADMIN';
+  const currentUserId = (session?.user as any)?.id;
 
   // Theme support
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
@@ -61,6 +62,9 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<'overview' | 'tasks' | 'projects' | 'team'>('overview');
   const [selectedProjectFilter, setSelectedProjectFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Member tasks filter toggler: defaults to only showing user's assigned tasks
+  const [memberViewFilter, setMemberViewFilter] = useState<'my' | 'all'>('my');
 
   // Modals state
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
@@ -240,8 +244,15 @@ export default function Dashboard() {
     }
   };
 
-  // Update task status directly (Accessible to all members)
+  // Update task status directly
   const handleUpdateStatus = async (taskId: string, newStatus: string) => {
+    // If Member, enforce that they can only modify status for tasks assigned to them
+    const targetTask = tasks.find(t => t.id === taskId);
+    if (!isAdmin && targetTask?.assigneeId !== currentUserId) {
+      alert("Permission denied. You can only edit the status of tasks assigned to you.");
+      return;
+    }
+
     try {
       const res = await fetch('/api/tasks', {
         method: 'PUT',
@@ -306,10 +317,16 @@ export default function Dashboard() {
     const matchesSearch =
       task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    // Filter logic for MEMBER role on the Kanban board (Overview)
+    if (!isAdmin && activeTab === 'overview' && memberViewFilter === 'my') {
+      return matchesProject && matchesSearch && task.assigneeId === currentUserId;
+    }
+    
     return matchesProject && matchesSearch;
   });
 
-  // Stats
+  // Stats (derived from the active scope)
   const statTodo = filteredTasks.filter((t) => t.status === 'TODO').length;
   const statInProgress = filteredTasks.filter((t) => t.status === 'IN_PROGRESS').length;
   const statReview = filteredTasks.filter((t) => t.status === 'REVIEW').length;
@@ -403,6 +420,32 @@ export default function Dashboard() {
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
+
+            {/* MEMBER My vs All Tasks Toggle (Kanban overview tab only) */}
+            {!isAdmin && activeTab === 'overview' && (
+              <div className="flex items-center gap-1 bg-surface-variant/40 border border-white/10 rounded-xl p-1 ml-2">
+                <button
+                  onClick={() => setMemberViewFilter('my')}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold tracking-wide uppercase transition-all ${
+                    memberViewFilter === 'my'
+                      ? 'bg-primary text-background shadow-sm'
+                      : 'text-on-surface-variant hover:text-on-surface'
+                  }`}
+                >
+                  My Tasks
+                </button>
+                <button
+                  onClick={() => setMemberViewFilter('all')}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold tracking-wide uppercase transition-all ${
+                    memberViewFilter === 'all'
+                      ? 'bg-primary text-background shadow-sm'
+                      : 'text-on-surface-variant hover:text-on-surface'
+                  }`}
+                >
+                  All Tasks
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="relative w-full md:w-80">
@@ -467,32 +510,48 @@ export default function Dashboard() {
                           No tasks here
                         </div>
                       ) : (
-                        columnTasks.map((task) => (
-                          <div
-                            key={task.id}
-                            onClick={() => {
-                              setSelectedTask(task);
-                              setIsDetailModalOpen(true);
-                            }}
-                            className="glass-card p-4 rounded-xl border border-white/5 hover:border-primary/30 transition-all cursor-pointer group flex flex-col gap-2.5 shadow-sm active:scale-[0.98]"
-                          >
-                            <h4 className="font-bold text-sm text-on-surface group-hover:text-primary transition-colors line-clamp-1 leading-snug">{task.title}</h4>
-                            <p className="text-xs text-on-surface-variant line-clamp-2 leading-relaxed">{task.description || 'No description provided'}</p>
-                            
-                            <div className="flex justify-between items-center pt-2 border-t border-white/10 text-[10px] text-on-surface-variant/80">
-                              <span className="flex items-center gap-1 font-medium truncate max-w-[100px]">
-                                <span className="material-symbols-outlined text-[12px] text-on-surface-variant/60">folder</span>
-                                {task.project?.name || 'Project'}
-                              </span>
+                        columnTasks.map((task) => {
+                          const isAssignedToMe = task.assigneeId === currentUserId;
+                          return (
+                            <div
+                              key={task.id}
+                              onClick={() => {
+                                setSelectedTask(task);
+                                setIsDetailModalOpen(true);
+                              }}
+                              className={`glass-card p-4 rounded-xl border transition-all cursor-pointer group flex flex-col gap-2.5 shadow-sm active:scale-[0.98] ${
+                                !isAdmin && !isAssignedToMe
+                                  ? 'border-white/5 opacity-70 hover:opacity-100 hover:border-white/10'
+                                  : 'border-white/5 hover:border-primary/30'
+                              }`}
+                            >
+                              <div className="flex justify-between items-start gap-2">
+                                <h4 className="font-bold text-sm text-on-surface group-hover:text-primary transition-colors line-clamp-1 leading-snug">{task.title}</h4>
+                                {!isAdmin && !isAssignedToMe && (
+                                  <span className="flex-shrink-0 material-symbols-outlined text-[14px] text-on-surface-variant/40" title="Read-only (Assigned to another developer)">lock</span>
+                                )}
+                              </div>
+                              <p className="text-xs text-on-surface-variant line-clamp-2 leading-relaxed">{task.description || 'No description provided'}</p>
                               
-                              <div className="flex items-center gap-1.5 flex-shrink-0">
-                                <div className="px-2 py-0.5 rounded bg-surface-variant/60 border border-white/5 font-semibold text-[8px] uppercase">
-                                  {task.assignee?.name ? task.assignee.name.split(' ')[0] : 'UNASSIGNED'}
+                              <div className="flex justify-between items-center pt-2 border-t border-white/10 text-[10px] text-on-surface-variant/80">
+                                <span className="flex items-center gap-1 font-medium truncate max-w-[100px]">
+                                  <span className="material-symbols-outlined text-[12px] text-on-surface-variant/60">folder</span>
+                                  {task.project?.name || 'Project'}
+                                </span>
+                                
+                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                  <div className={`px-2 py-0.5 rounded border font-semibold text-[8px] uppercase ${
+                                    isAssignedToMe
+                                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                      : 'bg-surface-variant/60 border-white/5'
+                                  }`}>
+                                    {task.assignee?.name ? task.assignee.name.split(' ')[0] : 'UNASSIGNED'}
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
-                        ))
+                          );
+                        })
                       )}
                     </div>
 
@@ -509,8 +568,8 @@ export default function Dashboard() {
                         Quick Add Task
                       </button>
                     ) : (
-                      <div className="mt-auto py-2.5 text-center text-[10px] text-on-surface-variant/30 italic">
-                        Viewing Only
+                      <div className="mt-auto py-2 text-center text-[10px] text-on-surface-variant/30 italic">
+                        {memberViewFilter === 'my' ? 'My Space' : 'Shared Space (Read Only)'}
                       </div>
                     )}
                   </div>
@@ -543,73 +602,79 @@ export default function Dashboard() {
                       </td>
                     </tr>
                   ) : (
-                    filteredTasks.map((task) => (
-                      <tr key={task.id} className="hover:bg-surface-container/20 transition-colors">
-                        <td className="p-4 pl-6 font-bold text-sm">
-                          <button
-                            onClick={() => {
-                              setSelectedTask(task);
-                              setIsDetailModalOpen(true);
-                            }}
-                            className="hover:text-primary transition-colors text-left"
-                          >
-                            {task.title}
-                          </button>
-                        </td>
-                        <td className="p-4 text-on-surface-variant font-semibold">
-                          <span className="flex items-center gap-1.5">
-                            <span className="material-symbols-outlined text-base text-on-surface-variant/50">folder</span>
-                            {task.project?.name}
-                          </span>
-                        </td>
-                        <td className="p-4">
-                          <select
-                            value={task.assigneeId || ''}
-                            disabled={!isAdmin} // Admin only
-                            onChange={(e) => handleUpdateAssignee(task.id, e.target.value)}
-                            className="bg-surface border border-white/10 rounded-lg px-2 py-1 text-xs text-on-surface focus:outline-none focus:border-primary cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed font-semibold shadow-sm"
-                          >
-                            <option value="">Unassigned</option>
-                            {users.map((u) => (
-                              <option key={u.id} value={u.id}>{u.name}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="p-4">
-                          <select
-                            value={task.status}
-                            onChange={(e) => handleUpdateStatus(task.id, e.target.value)}
-                            className={`border border-white/10 rounded-lg px-2.5 py-1 text-xs font-bold focus:outline-none cursor-pointer shadow-sm ${
-                              task.status === 'TODO' ? 'bg-tertiary/10 text-tertiary' :
-                              task.status === 'IN_PROGRESS' ? 'bg-secondary/10 text-secondary' :
-                              task.status === 'REVIEW' ? 'bg-primary/10 text-primary' :
-                              'bg-emerald-500/10 text-emerald-500'
-                            }`}
-                          >
-                            <option value="TODO">To Do</option>
-                            <option value="IN_PROGRESS">In Progress</option>
-                            <option value="REVIEW">Review</option>
-                            <option value="DONE">Completed</option>
-                          </select>
-                        </td>
-                        <td className="p-4 text-on-surface-variant font-semibold">
-                          {task.dueDate ? new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'No Date'}
-                        </td>
-                        <td className="p-4 text-right pr-6">
-                          <button
-                            onClick={() => {
-                              setSelectedTask(task);
-                              setIsDetailModalOpen(true);
-                            }}
-                            className="p-1.5 rounded-lg hover:bg-surface-variant/40 text-on-surface-variant hover:text-primary transition-all"
-                          >
-                            <span className="material-symbols-outlined text-base">
-                              {isAdmin ? 'edit' : 'visibility'}
+                    filteredTasks.map((task) => {
+                      const isAssignedToMe = task.assigneeId === currentUserId;
+                      return (
+                        <tr key={task.id} className={`hover:bg-surface-container/20 transition-colors ${!isAdmin && !isAssignedToMe ? 'opacity-85' : ''}`}>
+                          <td className="p-4 pl-6 font-bold text-sm">
+                            <button
+                              onClick={() => {
+                                setSelectedTask(task);
+                                setIsDetailModalOpen(true);
+                              }}
+                              className="hover:text-primary transition-colors text-left flex items-center gap-1.5"
+                            >
+                              {task.title}
+                              {!isAdmin && !isAssignedToMe && (
+                                <span className="material-symbols-outlined text-xs text-on-surface-variant/40" title="Read-only">lock</span>
+                              )}
+                            </button>
+                          </td>
+                          <td className="p-4 text-on-surface-variant font-semibold">
+                            <span className="flex items-center gap-1.5">
+                              <span className="material-symbols-outlined text-base text-on-surface-variant/50">folder</span>
+                              {task.project?.name}
                             </span>
-                          </button>
-                        </td>
-                      </tr>
-                    ))
+                          </td>
+                          <td className="p-4">
+                            <select
+                              value={task.assigneeId || ''}
+                              disabled={true} // Assignees can only be modified by Admins, locked for all members
+                              className="bg-surface border border-white/10 rounded-lg px-2 py-1 text-xs text-on-surface focus:outline-none focus:border-primary disabled:opacity-75 disabled:cursor-not-allowed font-semibold shadow-sm"
+                            >
+                              <option value="">Unassigned</option>
+                              {users.map((u) => (
+                                <option key={u.id} value={u.id}>{u.name}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="p-4">
+                            <select
+                              value={task.status}
+                              disabled={!isAdmin && !isAssignedToMe} // Disable editing status for other members' tasks
+                              onChange={(e) => handleUpdateStatus(task.id, e.target.value)}
+                              className={`border border-white/10 rounded-lg px-2.5 py-1 text-xs font-bold focus:outline-none cursor-pointer shadow-sm disabled:opacity-75 disabled:cursor-not-allowed ${
+                                task.status === 'TODO' ? 'bg-tertiary/10 text-tertiary' :
+                                task.status === 'IN_PROGRESS' ? 'bg-secondary/10 text-secondary' :
+                                task.status === 'REVIEW' ? 'bg-primary/10 text-primary' :
+                                'bg-emerald-500/10 text-emerald-500'
+                              }`}
+                            >
+                              <option value="TODO">To Do</option>
+                              <option value="IN_PROGRESS">In Progress</option>
+                              <option value="REVIEW">Review</option>
+                              <option value="DONE">Completed</option>
+                            </select>
+                          </td>
+                          <td className="p-4 text-on-surface-variant font-semibold">
+                            {task.dueDate ? new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'No Date'}
+                          </td>
+                          <td className="p-4 text-right pr-6">
+                            <button
+                              onClick={() => {
+                                setSelectedTask(task);
+                                setIsDetailModalOpen(true);
+                              }}
+                              className="p-1.5 rounded-lg hover:bg-surface-variant/40 text-on-surface-variant hover:text-primary transition-all"
+                            >
+                              <span className="material-symbols-outlined text-base">
+                                {isAdmin ? 'edit' : 'visibility'}
+                              </span>
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -989,7 +1054,7 @@ export default function Dashboard() {
                 <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Assignee</span>
                 <select
                   value={selectedTask.assigneeId || ''}
-                  disabled={!isAdmin} // Admin only
+                  disabled={true} // Assignee lock for members, Admins only (handled via top table or details is read-only for assignee)
                   onChange={(e) => handleUpdateAssignee(selectedTask.id, e.target.value)}
                   className="bg-surface border border-white/10 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-on-surface focus:outline-none focus:border-primary cursor-pointer w-full disabled:opacity-75 disabled:cursor-not-allowed shadow-sm"
                 >
@@ -1004,12 +1069,13 @@ export default function Dashboard() {
                 <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Status</span>
                 <select
                   value={selectedTask.status}
+                  disabled={!isAdmin && selectedTask.assigneeId !== currentUserId} // Disable if member and not assigned to them
                   onChange={(e) => handleUpdateStatus(selectedTask.id, e.target.value)}
-                  className={`border border-white/10 rounded-lg px-2.5 py-1.5 text-xs font-bold focus:outline-none cursor-pointer w-full shadow-sm ${
+                  className={`border border-white/10 rounded-lg px-2.5 py-1.5 text-xs font-bold focus:outline-none cursor-pointer w-full shadow-sm disabled:opacity-75 disabled:cursor-not-allowed ${
                     selectedTask.status === 'TODO' ? 'bg-tertiary/10 text-tertiary' :
                     selectedTask.status === 'IN_PROGRESS' ? 'bg-secondary/10 text-secondary' :
                     selectedTask.status === 'REVIEW' ? 'bg-primary/10 text-primary' :
-                    'bg-emerald-500/10 text-emerald-500'
+                    'bg-emerald-500/10 text-emerald-400'
                   }`}
                 >
                   <option value="TODO">To Do</option>
@@ -1049,7 +1115,12 @@ export default function Dashboard() {
                   Delete Task
                 </button>
               ) : (
-                <span className="text-[10px] text-on-surface-variant/40 italic">Member Access Only</span>
+                <div className="flex items-center gap-1">
+                  <span className="material-symbols-outlined text-xs">lock</span>
+                  <span className="text-[10px] text-on-surface-variant/60 font-bold tracking-wide uppercase">
+                    {selectedTask.assigneeId === currentUserId ? 'Assigned to you' : 'Read-only'}
+                  </span>
+                </div>
               )}
             </div>
           </div>
