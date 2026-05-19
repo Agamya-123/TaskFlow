@@ -629,7 +629,8 @@ export default function Dashboard() {
                           <td className="p-4">
                             <select
                               value={task.assigneeId || ''}
-                              disabled={true} // Assignees can only be modified by Admins, locked for all members
+                              disabled={!isAdmin} // Assignees can only be modified by Admins, locked for all members
+                              onChange={(e) => handleUpdateAssignee(task.id, e.target.value)}
                               className="bg-surface border border-white/10 rounded-lg px-2 py-1 text-xs text-on-surface focus:outline-none focus:border-primary disabled:opacity-75 disabled:cursor-not-allowed font-semibold shadow-sm"
                             >
                               <option value="">Unassigned</option>
@@ -1054,7 +1055,7 @@ export default function Dashboard() {
                 <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Assignee</span>
                 <select
                   value={selectedTask.assigneeId || ''}
-                  disabled={true} // Assignee lock for members, Admins only (handled via top table or details is read-only for assignee)
+                  disabled={!isAdmin} // Assignee lock for members, Admins only (handled via top table or details is read-only for assignee)
                   onChange={(e) => handleUpdateAssignee(selectedTask.id, e.target.value)}
                   className="bg-surface border border-white/10 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-on-surface focus:outline-none focus:border-primary cursor-pointer w-full disabled:opacity-75 disabled:cursor-not-allowed shadow-sm"
                 >
