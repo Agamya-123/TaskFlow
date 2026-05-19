@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState<'ADMIN' | 'MEMBER'>('ADMIN');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -16,6 +17,7 @@ export default function Login() {
     const result = await signIn('credentials', {
       email,
       password,
+      role,
       redirect: false,
     });
 
@@ -47,6 +49,36 @@ export default function Login() {
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-semibold text-on-surface/80 tracking-wide uppercase">Workspace Role</label>
+            <div className="flex p-1 bg-surface-container/60 border border-white/5 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setRole('ADMIN')}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all ${
+                  role === 'ADMIN'
+                    ? 'bg-primary text-background font-bold shadow-md shadow-primary/10'
+                    : 'text-on-surface-variant hover:text-on-surface'
+                }`}
+              >
+                <span className="material-symbols-outlined text-sm">admin_panel_settings</span>
+                Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole('MEMBER')}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all ${
+                  role === 'MEMBER'
+                    ? 'bg-primary text-background font-bold shadow-md shadow-primary/10'
+                    : 'text-on-surface-variant hover:text-on-surface'
+                }`}
+              >
+                <span className="material-symbols-outlined text-sm">person</span>
+                Team Member
+              </button>
+            </div>
+          </div>
+
           <div className="flex flex-col gap-2">
             <label className="text-xs font-semibold text-on-surface/80 tracking-wide uppercase">Email Address</label>
             <div className="relative">

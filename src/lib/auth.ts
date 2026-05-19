@@ -10,6 +10,7 @@ export const authOptions: AuthOptions = {
       credentials: {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
+        role: { label: 'Role', type: 'text' },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
@@ -21,12 +22,13 @@ export const authOptions: AuthOptions = {
         if (!user) {
           // Auto-signup for MVP purposes if user doesn't exist
           const hashedPassword = await bcrypt.hash(credentials.password, 10);
+          const signupRole = credentials.role === 'MEMBER' ? 'MEMBER' : 'ADMIN';
           const newUser = await prisma.user.create({
             data: {
               email: credentials.email,
               password: hashedPassword,
               name: credentials.email.split('@')[0],
-              role: 'ADMIN', // First user is admin for demo
+              role: signupRole,
             },
           });
           return { id: newUser.id, email: newUser.email, name: newUser.name, role: newUser.role };
