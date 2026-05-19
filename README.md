@@ -1,36 +1,82 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 📌 TaskFlow - Team Task Manager (Full-Stack)
 
-## Getting Started
+TaskFlow is a premium, beautifully designed full-stack team task management application. Built with Next.js, Prisma, Tailwind CSS v4, and NextAuth.js.
 
-First, run the development server:
+## 🚀 Key Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+*   **Authentication (Signup/Login)**: Uses NextAuth.js with Credentials provider. Automatically creates a user if the email doesn't exist (useful for MVP testing).
+*   **Premium Glassmorphic Design**: Uses the Lumina Task Systems design language with backdrop blurs, dark mode themes, and electric purple/cyan accents. Designed via Stitch MCP.
+*   **Dashboard**: Shows a high-level overview of tasks, recent tasks, and team activity.
+*   **REST APIs**: `/api/tasks` and `/api/auth` endpoints built seamlessly using Next.js App Router.
+*   **Database**: Uses SQLite for fast local development, but easily adaptable to PostgreSQL via Prisma.
+*   **Role-based Access**: Users are created as `ADMIN` by default for the first user.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## ⚙️ Tech Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+*   **Frontend**: Next.js 16 (App Router), React, Tailwind CSS v4
+*   **Backend**: Next.js API Routes, Prisma ORM
+*   **Database**: SQLite (Local / Railway Volumes), PostgreSQL (Production Optional)
+*   **Auth**: NextAuth.js (v4) & bcryptjs
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 📦 Local Development
 
-## Learn More
+1.  **Install Dependencies:**
+    ```bash
+    npm install
+    ```
 
-To learn more about Next.js, take a look at the following resources:
+2.  **Set up the Database:**
+    ```bash
+    npx prisma db push
+    ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+3.  **Run the Development Server:**
+    ```bash
+    npm run dev
+    ```
+    The app will be running on `http://localhost:3000`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🌐 Deployment (Mandatory Railway Instructions)
 
-## Deploy on Vercel
+To deploy this application to Railway and fulfill the mandatory requirement, follow these exact steps:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1.  **Push to GitHub:**
+    Initialize a git repository in this folder and push it to your GitHub account.
+    ```bash
+    git init
+    git add .
+    git commit -m "Initial commit"
+    git branch -M main
+    git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO.git
+    git push -u origin main
+    ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+2.  **Deploy on Railway:**
+    *   Go to [Railway.app](https://railway.app/).
+    *   Click **New Project** > **Deploy from GitHub repo**.
+    *   Select your newly created repository.
+
+3.  **Configure Environment Variables in Railway:**
+    *   Go to your project's **Variables** tab.
+    *   Add `NEXTAUTH_SECRET`: (Generate a random string, e.g., `super-secret-key-12345`).
+    *   Add `NEXTAUTH_URL`: `https://YOUR_RAILWAY_URL.up.railway.app` (You will get this URL after the first deployment, you must update this variable once you have the domain).
+
+4.  **Database Persistence (Crucial for SQLite on Railway):**
+    Because Railway uses ephemeral file systems, your SQLite `dev.db` will be wiped on every deploy unless you add a volume.
+    *   Go to your Railway Service Settings.
+    *   Scroll to **Volumes** and click **Add Volume**.
+    *   Set the mount path to `/app/prisma` (or wherever your `dev.db` is located relative to root).
+    *   *Alternative:* If you prefer, you can add a **PostgreSQL** database service in Railway, update the `DATABASE_URL` variable, and change `provider = "sqlite"` to `provider = "postgresql"` in `prisma/schema.prisma`.
+
+5.  **Build Command (Optional, usually automatic):**
+    Railway will automatically detect Next.js and run `npm run build` and `npm start`.
+
+## ⏳ Submission Requirements
+
+*   **Live URL**: (Will be provided by Railway)
+*   **GitHub repo**: (Your GitHub repository link)
+*   **README**: You are reading it!
+*   **Demo Video**: You can record the screen using OBS Studio, Loom, or Windows Game Bar (Win + G) showing:
+    1.  The beautiful Dashboard UI.
+    2.  Signing in or creating an account on the Login page.
+    3.  Navigating the tasks.
