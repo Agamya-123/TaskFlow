@@ -29,6 +29,27 @@ export default function Login() {
     }
   };
 
+  // Direct demo login triggers
+  const triggerDemoLogin = async (selectedRole: 'ADMIN' | 'MEMBER') => {
+    setLoading(true);
+    const demoEmail = selectedRole === 'ADMIN' ? 'admin@taskflow.io' : 'member@taskflow.io';
+    const demoPassword = 'password123';
+    
+    const result = await signIn('credentials', {
+      email: demoEmail,
+      password: demoPassword,
+      role: selectedRole,
+      redirect: false,
+    });
+
+    if (result?.ok) {
+      router.push('/');
+    } else {
+      alert('Demo login failed. Please try again.');
+      setLoading(false);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-background relative overflow-hidden flex items-center justify-center p-6">
       {/* Decorative Glows */}
@@ -125,9 +146,33 @@ export default function Login() {
           </button>
         </form>
 
-        <div className="text-center pt-2">
-          <p className="text-[11px] text-on-surface-variant/50 leading-normal">
-            New here? Enter any email and password and an account will be automatically provisioned for you.
+        <div className="flex flex-col gap-3 pt-3 border-t border-white/10">
+          <label className="text-[10px] font-bold text-center text-on-surface-variant/70 uppercase tracking-widest">
+            ⚡ Quick Demo Access
+          </label>
+          <div className="flex gap-3">
+            <button
+              onClick={() => triggerDemoLogin('ADMIN')}
+              disabled={loading}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/25 hover:border-primary/40 text-xs font-bold transition-all disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-sm font-bold">admin_panel_settings</span>
+              Demo Admin
+            </button>
+            <button
+              onClick={() => triggerDemoLogin('MEMBER')}
+              disabled={loading}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-secondary/10 hover:bg-secondary/20 text-secondary border border-secondary/25 hover:border-secondary/40 text-xs font-bold transition-all disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-sm font-bold">person</span>
+              Demo Member
+            </button>
+          </div>
+        </div>
+
+        <div className="text-center pt-1">
+          <p className="text-[10px] text-on-surface-variant/45 leading-normal">
+            To register a custom account, simply enter any credentials above and check your workspace.
           </p>
         </div>
       </div>
