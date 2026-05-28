@@ -18,6 +18,8 @@ model User {
   role      String    @default("MEMBER")
   projects  Project[]
   tasks     Task[]
+  comments  Comment[]
+  activities ActivityLog[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
@@ -38,11 +40,50 @@ model Task {
   title       String
   description String?
   status      String    @default("TODO")
+  priority    String    @default("MEDIUM")
+  tags        String[]
   dueDate     DateTime?
   projectId   String
-  project     Project   @relation(fields: [projectId], references: [id])
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   assigneeId  String?
   assignee    User?     @relation(fields: [assigneeId], references: [id])
+  subtasks    Subtask[]
+  comments    Comment[]
+  activities  ActivityLog[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 }
+
+model Subtask {
+  id          String   @id @default(cuid())
+  title       String
+  isCompleted Boolean  @default(false)
+  taskId      String
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  action    String   // e.g. "STATUS_CHANGE", "ASSIGNEE_CHANGE", "COMMENT_ADDED"
+  details   String
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+
